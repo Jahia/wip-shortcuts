@@ -15,7 +15,7 @@
             </bean>
         </property>
         <property name="titleKey" value="label.toggleWip@resources.wip-shortcuts"/>
-        <property name="icon" value="translate"/>
+        <property name="icon" value="suspend"/>
         <!--property name="parent" value="editmode.contextMenu"/-->
         <property name="parent">
             <list>
