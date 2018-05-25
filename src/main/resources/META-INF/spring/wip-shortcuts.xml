@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+    <bean class="org.jahia.modules.wipshortcuts.actions.WipOnTreeAction">
+        <property name="name" value="toggleWipOnTree" />
+        <property name="requiredWorkspace" value="default" />
+    </bean>
+
+    <bean id="Toolbar.Item.ToggleWipMenu" class="org.jahia.services.uicomponents.bean.toolbar.Item">
+        <property name="actionItem">
+            <bean class="org.jahia.ajax.gwt.client.widget.toolbar.action.ExecuteActionItem">
+                <property name="action" value="toggleWipOnTree"/>
+            </bean>
+        </property>
+        <property name="titleKey" value="label.toggleWip@resources.wip-shortcuts"/>
+        <property name="icon" value="translate"/>
+        <!--property name="parent" value="editmode.contextMenu"/-->
+        <property name="parent">
+            <list>
+                <value>editmode.contextMenu</value>  <!-- EDIT mode -->
+                <value>editorialcontentmanager.contextMenu</value>  <!-- Content manager -->
+                <value>editmode.tabs[2].tableContextMenu</value>   <!-- Content tab in left panel , not working -->
+            </list>
+        </property>
+        <property name="positionAfter" value="Toolbar.Item.EditContent"/>
+    </bean>
+</beans>
