@@ -8,7 +8,8 @@
         <property name="requiredWorkspace" value="default" />
     </bean>
 
-    <bean id="Toolbar.Item.ToggleWipMenu" class="org.jahia.services.uicomponents.bean.toolbar.Item">
+    <!-- Content manager -->
+    <bean id="Toolbar.Item.ToggleWipMenu.editmode.ctxMenu" class="org.jahia.services.uicomponents.bean.toolbar.Item">
         <property name="actionItem">
             <bean class="org.jahia.ajax.gwt.client.widget.toolbar.action.ExecuteActionItem">
                 <property name="action" value="toggleWipOnTree"/>
@@ -16,15 +17,46 @@
         </property>
         <property name="titleKey" value="label.toggleWip@resources.wip-shortcuts"/>
         <property name="icon" value="suspend"/>
-        <!--property name="parent" value="editmode.contextMenu"/-->
-        <property name="parent">
-            <list>
-                <value>editmode.contextMenu</value>  <!-- EDIT mode -->
-                <value>editorialcontentmanager.contextMenu</value>  <!-- Content manager -->
-                <value>editmode.tabs[2].tableContextMenu</value>   <!-- Content tab in left panel , not working -->
-                <value>editmode.tabs[0].treeContextMenu</value>   <!-- Pages tab in left panel , right click on a page -->
-            </list>
+        <property name="parent" value="editmode.contextMenu"/>
+        <property name="positionAfter" value="Toolbar.Item.EditContent"/>
+    </bean>
+
+    <!-- Content manager -->
+    <bean id="Toolbar.Item.ToggleWipMenu.contentMgr" class="org.jahia.services.uicomponents.bean.toolbar.Item">
+        <property name="actionItem">
+            <bean class="org.jahia.ajax.gwt.client.widget.toolbar.action.ExecuteActionItem">
+                <property name="action" value="toggleWipOnTree"/>
+            </bean>
         </property>
+        <property name="titleKey" value="label.toggleWip@resources.wip-shortcuts"/>
+        <property name="icon" value="suspend"/>
+        <property name="parent" value="editorialcontentmanager.contextMenu"/>
+        <property name="positionAfter" value="Toolbar.Item.EditContent"/>
+    </bean>
+
+    <!-- Content tab in left panel -->
+    <bean id="Toolbar.Item.ToggleWipMenu.editmode.contentTab" class="org.jahia.services.uicomponents.bean.toolbar.Item">
+        <property name="actionItem">
+            <bean class="org.jahia.ajax.gwt.client.widget.toolbar.action.ExecuteActionItem">
+                <property name="action" value="toggleWipOnTree"/>
+            </bean>
+        </property>
+        <property name="titleKey" value="label.toggleWip@resources.wip-shortcuts"/>
+        <property name="icon" value="suspend"/>
+        <property name="parent" value="editmode.tabs[2].tableContextMenu"/>
+        <property name="positionAfter" value="Toolbar.Item.EditContent"/>
+    </bean>
+
+    <!-- Pages tab in left panel , right click on a page -->
+    <bean id="Toolbar.Item.ToggleWipMenu.editmode.pagesTab" class="org.jahia.services.uicomponents.bean.toolbar.Item">
+        <property name="actionItem">
+            <bean class="org.jahia.ajax.gwt.client.widget.toolbar.action.ExecuteActionItem">
+                <property name="action" value="toggleWipOnTree"/>
+            </bean>
+        </property>
+        <property name="titleKey" value="label.toggleWip@resources.wip-shortcuts"/>
+        <property name="icon" value="suspend"/>
+        <property name="parent" value="editmode.tabs[0].treeContextMenu"/>
         <property name="positionAfter" value="Toolbar.Item.EditContent"/>
     </bean>
 </beans>
