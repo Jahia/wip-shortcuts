@@ -7,19 +7,19 @@ import org.slf4j.LoggerFactory;
 
 import javax.jcr.RepositoryException;
 
-public class WipOnTreeAction extends AbstractWipUpdaterAction {
+public class WipOnPageAction extends AbstractWipUpdaterAction {
 
-    private static final Logger logger = LoggerFactory.getLogger(WipOnTreeAction.class);
+    private static final Logger logger = LoggerFactory.getLogger(WipOnPageAction.class);
 
     @Override
     protected boolean isValidRootNode(JCRNodeWrapper node) throws RepositoryException {
-        return node.isNodeType(Constants.JAHIANT_CONTENT);
+        return node.isNodeType(Constants.JAHIANT_PAGE);
     }
 
     @Override
     protected boolean canIterate(JCRNodeWrapper child) {
         try {
-            return child.isNodeType(Constants.JAHIANT_CONTENT);
+            return !child.isNodeType(Constants.JAHIANT_PAGE) && child.isNodeType(Constants.JAHIANT_CONTENT);
         } catch (RepositoryException e) {
             logger.error("", e);
             return false;

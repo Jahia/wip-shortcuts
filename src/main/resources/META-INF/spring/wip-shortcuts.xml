@@ -8,6 +8,11 @@
         <property name="requiredWorkspace" value="default" />
     </bean>
 
+    <bean class="org.jahia.modules.wipshortcuts.actions.WipOnPageAction">
+        <property name="name" value="toggleWipOnPage" />
+        <property name="requiredWorkspace" value="default" />
+    </bean>
+
     <!-- Content manager -->
     <bean id="Toolbar.Item.ToggleWipMenu.editmode.ctxMenu" class="org.jahia.services.uicomponents.bean.toolbar.Item">
         <property name="actionItem">
@@ -51,7 +56,7 @@
     <bean id="Toolbar.Item.ToggleWipMenu.editmode.pagesTab" class="org.jahia.services.uicomponents.bean.toolbar.Item">
         <property name="actionItem">
             <bean class="org.jahia.ajax.gwt.client.widget.toolbar.action.ExecuteActionItem">
-                <property name="action" value="toggleWipOnTree"/>
+                <property name="action" value="toggleWipOnPage"/>
             </bean>
         </property>
         <property name="titleKey" value="label.toggleWip@resources.wip-shortcuts"/>
