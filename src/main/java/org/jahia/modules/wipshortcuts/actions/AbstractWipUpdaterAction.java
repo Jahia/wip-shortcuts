@@ -1,14 +1,19 @@
 package org.jahia.modules.wipshortcuts.actions;
 
-import com.google.common.collect.Sets;
-import com.google.common.collect.Sets.SetView;
+import org.apache.commons.lang.StringUtils;
 import org.jahia.api.Constants;
 import org.jahia.bin.Action;
 import org.jahia.bin.ActionResult;
-import org.jahia.services.content.*;
+import org.jahia.services.content.JCRCallback;
+import org.jahia.services.content.JCRContentUtils;
+import org.jahia.services.content.JCRNodeWrapper;
+import org.jahia.services.content.JCRSessionWrapper;
+import org.jahia.services.content.JCRTemplate;
+import org.jahia.services.content.JCRValueWrapper;
 import org.jahia.services.render.RenderContext;
 import org.jahia.services.render.Resource;
 import org.jahia.services.render.URLResolver;
+import org.jahia.utils.LanguageCodeConverters;
 import org.jahia.utils.security.AccessManagerUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -22,15 +27,24 @@ import javax.jcr.Value;
 import javax.jcr.security.Privilege;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static org.jahia.api.Constants.WORKINPROGRESS_LANGUAGES;
+import static org.jahia.api.Constants.WORKINPROGRESS_STATUS;
+import static org.jahia.api.Constants.WORKINPROGRESS_STATUS_ALLCONTENT;
+import static org.jahia.api.Constants.WORKINPROGRESS_STATUS_DISABLED;
+import static org.jahia.api.Constants.WORKINPROGRESS_STATUS_LANG;
 
 public abstract class AbstractWipUpdaterAction extends Action {
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractWipUpdaterAction.class);
 
     private static final ActionResult ACTION_RESULT;
-
-    private Set<String> languages;
 
     static {
         final JSONObject obj = new JSONObject();
@@ -44,172 +58,157 @@ public abstract class AbstractWipUpdaterAction extends Action {
         ACTION_RESULT = new ActionResult(HttpServletResponse.SC_OK, null, obj);
     }
 
+    protected abstract boolean isValidRootNode(JCRNodeWrapper node) throws RepositoryException;
+
+    protected abstract boolean canIterate(JCRNodeWrapper child);
+
     @Override
     public ActionResult doExecute(HttpServletRequest req, RenderContext renderContext, Resource resource, JCRSessionWrapper session, Map<String, List<String>> parameters, URLResolver urlResolver) throws Exception {
         final JCRNodeWrapper mainNode = resource.getNode();
         if (!isValidRootNode(mainNode)) return ActionResult.BAD_REQUEST;
-        toggleWip(mainNode);
-        mainNode.getSession().save();
+        toggleWip(mainNode, !getWipStatus(mainNode));
 
         return ACTION_RESULT;
     }
 
-    protected abstract boolean isValidRootNode(JCRNodeWrapper node) throws RepositoryException;
+    private boolean getWipStatus(JCRNodeWrapper node) throws RepositoryException {
+        if (!node.hasProperty(WORKINPROGRESS_STATUS)) return false;
+        switch (node.getPropertyAsString(WORKINPROGRESS_STATUS)) {
+            case WORKINPROGRESS_STATUS_DISABLED:
+                return false;
+            case WORKINPROGRESS_STATUS_ALLCONTENT:
+                return true;
+            case WORKINPROGRESS_STATUS_LANG:
+                if (!node.hasProperty(WORKINPROGRESS_LANGUAGES)) return false;
 
-    private String getWipState(JCRNodeWrapper node) throws RepositoryException {
-        final Locale locale = node.getSession().getLocale();
-        final Node wipHolder = node.getRealNode();
-        languages = existingWipLang(wipHolder);
-
-        if(wipHolder.hasProperty(Constants.WORKINPROGRESS_STATUS) &&
-                Constants.WORKINPROGRESS_STATUS_LANG.equals(wipHolder.getProperty(Constants.WORKINPROGRESS_STATUS).getString())
-         ){
-            if(wipHolder.hasProperty(Constants.WORKINPROGRESS_LANGUAGES)){
-
-                if( languages.contains(locale.toString()) && languages.size()==1){
-                    return Constants.WORKINPROGRESS_STATUS_DISABLED;
-                }else{
-                    return Constants.WORKINPROGRESS_STATUS_LANG;
+                final String currentLocale = LanguageCodeConverters.localeToLanguageTag(node.getSession().getLocale());
+                for (Value lang : node.getProperty(WORKINPROGRESS_LANGUAGES).getValues()) {
+                    if (StringUtils.equals(currentLocale, lang.getString())) return true;
                 }
-            }
-        }else if (wipHolder.hasProperty(Constants.WORKINPROGRESS_STATUS) && Constants.WORKINPROGRESS_STATUS_ALLCONTENT.equals(wipHolder.getProperty(Constants.WORKINPROGRESS_STATUS).getString())) {
-            if( languages.contains(locale.toString()) && languages.size()==1){
-                return Constants.WORKINPROGRESS_STATUS_DISABLED;
-            }else{
-                return Constants.WORKINPROGRESS_STATUS_LANG;
-            }
-        }else {
-            return Constants.WORKINPROGRESS_STATUS_LANG;
         }
-        return null;
-
+        return false;
     }
 
-     private void toggleWip(JCRNodeWrapper node) throws RepositoryException {
-        final String state = getWipState(node);
-        saveWipPropertiesIfNeeded(node,state);
-        if (logger.isDebugEnabled()) logger.debug(String.format("WIP=%s on %s", state, node.getPath()));
+    private void toggleWip(JCRNodeWrapper node, boolean newStatus) throws RepositoryException {
+        updateWipStatus(node, newStatus);
+        if (logger.isDebugEnabled()) logger.debug(String.format("WIP=%s on %s", newStatus, node.getPath()));
         for (JCRNodeWrapper child : node.getNodes()) {
-            if (canIterate(child)) toggleWip(child);
+            if (canIterate(child)) toggleWip(child, newStatus);
         }
     }
 
-    protected abstract boolean canIterate(JCRNodeWrapper child);
+    private void updateWipStatus(JCRNodeWrapper node, boolean status) throws RepositoryException {
+        final String currentLocale = LanguageCodeConverters.localeToLanguageTag(node.getSession().getLocale());
+        final JCRSessionWrapper session = node.getSession();
+        if (!node.hasPermission(AccessManagerUtils.getPrivilegeName(Privilege.JCR_MODIFY_PROPERTIES, session.getWorkspace().getName())) &&
+                !node.hasPermission(String.format("%s_%s", AccessManagerUtils.getPrivilegeName(Privilege.JCR_MODIFY_PROPERTIES, session.getWorkspace().getName()), currentLocale))) {
+            throw new AccessDeniedException(String.format("Unable to update Work In Progress information on node %s for user %s in locale %s",
+                    node.getPath(), session.getUser().getName(), currentLocale));
+        }
 
-    private Set<String> existingWipLang(Node node){
-        Set<String> existingWipLanguages = Collections.emptySet();
-        try {
-            if (node.hasProperty(Constants.WORKINPROGRESS_LANGUAGES)) {
-                existingWipLanguages = new HashSet<>();
-                for (Value lang : node.getProperty(Constants.WORKINPROGRESS_LANGUAGES).getValues()) {
-                    existingWipLanguages.add(lang.getString());
-                }
+        if (status) {
+            if (!node.hasProperty(WORKINPROGRESS_STATUS)) {
+                writeWipStatus(node, Collections.singleton(currentLocale));
+                return;
             }
-        } catch (RepositoryException e) {
-            e.printStackTrace();
+            switch (node.getPropertyAsString(WORKINPROGRESS_STATUS)) {
+                case WORKINPROGRESS_STATUS_DISABLED:
+                    writeWipStatus(node, Collections.singleton(currentLocale));
+                    break;
+                case WORKINPROGRESS_STATUS_ALLCONTENT:
+                    break;
+                case WORKINPROGRESS_STATUS_LANG:
+                    final Set<String> languages;
+                    if (!node.hasProperty(WORKINPROGRESS_LANGUAGES)) {
+                        languages = Collections.singleton(currentLocale);
+                    } else {
+                        languages = new HashSet<>();
+                        final JCRValueWrapper[] values = node.getProperty(WORKINPROGRESS_LANGUAGES).getValues();
+                        for (Value val : values) {
+                            final String lang = val.getString();
+                            languages.add(lang);
+                        }
+                        languages.add(currentLocale);
+                    }
+                    writeWipStatus(node, languages);
+            }
+        } else {
+            if (!node.hasProperty(WORKINPROGRESS_STATUS)) return;
+            final Set<String> languages;
+            switch (node.getPropertyAsString(WORKINPROGRESS_STATUS)) {
+                case WORKINPROGRESS_STATUS_DISABLED:
+                    break;
+                case WORKINPROGRESS_STATUS_ALLCONTENT:
+                    languages = node.getResolveSite().getLanguages();
+                    languages.remove(currentLocale);
+                    writeWipStatus(node, languages);
+                    break;
+                case WORKINPROGRESS_STATUS_LANG:
+                    if (!node.hasProperty(WORKINPROGRESS_LANGUAGES)) break;
+                    languages = new HashSet<>();
+                    final JCRValueWrapper[] values = node.getProperty(WORKINPROGRESS_LANGUAGES).getValues();
+                    for (Value val : values) {
+                        final String lang = val.getString();
+                        if (!StringUtils.equals(currentLocale, lang)) {
+                            languages.add(lang);
+                        }
+                    }
+                    if (languages.size() < values.length)
+                        writeWipStatus(node, languages);
+            }
         }
-        return existingWipLanguages;
     }
 
-    private void updateWipStatus(JCRNodeWrapper node, final String wipStatusToSet, final Set<String> wipLangugagesToSet)
-            throws RepositoryException {
-        if (wipStatusToSet == null && wipLangugagesToSet == null) {
+    private void writeWipStatus(JCRNodeWrapper node, final Set<String> wipLangugagesToSet) throws RepositoryException {
+        final String wipStatus =
+                wipLangugagesToSet == null || wipLangugagesToSet.isEmpty() ?
+                        WORKINPROGRESS_STATUS_DISABLED : WORKINPROGRESS_STATUS_LANG;
+
+        if (WORKINPROGRESS_STATUS_DISABLED.equals(wipStatus) &&
+                (!node.hasProperty(WORKINPROGRESS_STATUS) || WORKINPROGRESS_STATUS_DISABLED.equals(node.getPropertyAsString(WORKINPROGRESS_STATUS))))
             return;
-        }
-        JCRSessionWrapper session = node.getSession();
+
+        final JCRSessionWrapper session = node.getSession();
         JCRTemplate.getInstance().doExecuteWithSystemSessionAsUser(session.getUser(), session.getWorkspace().getName(),
                 session.getLocale(), new JCRCallback<Void>() {
                     @Override
                     public Void doInJCR(JCRSessionWrapper systemSession) throws RepositoryException {
-                        Node targetNode = systemSession.getProviderSession(node.getProvider())
-                                .getNodeByIdentifier(node.getIdentifier());
-                        boolean debugEnabled = logger.isDebugEnabled();
-                        String effectiveWipStatusToSet = wipStatusToSet;
-                        if (effectiveWipStatusToSet != null) {
-                            targetNode.setProperty(Constants.WORKINPROGRESS_STATUS, effectiveWipStatusToSet);
-                            if (debugEnabled) {
-                                logger.debug("Setting WIP status on node {} to {}", targetNode.getPath(),
-                                        effectiveWipStatusToSet);
-                            }
-                        } else if (wipLangugagesToSet != null && wipLangugagesToSet.isEmpty()) {
-                            // languages are empty
-                            if (targetNode.hasProperty(Constants.WORKINPROGRESS_STATUS) && Constants.WORKINPROGRESS_STATUS_LANG.equals(targetNode.getProperty(Constants.WORKINPROGRESS_STATUS).getString())) {
-                                // in this case we are removing WIP completely
-                                effectiveWipStatusToSet = Constants.WORKINPROGRESS_STATUS_DISABLED;
-                            }
+                        final Node targetNode = systemSession.getProviderSession(node.getProvider()).getNodeByIdentifier(node.getIdentifier());
+                        final boolean debugEnabled = logger.isDebugEnabled();
+                        boolean needSave = true;
+                        switch (wipStatus) {
+                            case WORKINPROGRESS_STATUS_DISABLED:
+                                if (targetNode.hasProperty(WORKINPROGRESS_STATUS) && !WORKINPROGRESS_STATUS_DISABLED.equals(targetNode.getProperty(WORKINPROGRESS_STATUS).getString())) {
+                                    targetNode.setProperty(Constants.WORKINPROGRESS_LANGUAGES, (Value[]) null);
+                                    targetNode.setProperty(Constants.WORKINPROGRESS_STATUS, (Value) null);
+                                } else {
+                                    needSave = false;
+                                }
+                                if (debugEnabled) {
+                                    logger.debug("Removing WIP status property on node {}", targetNode.getPath());
+                                }
+                                break;
+                            case WORKINPROGRESS_STATUS_ALLCONTENT:
+                                targetNode.setProperty(WORKINPROGRESS_STATUS, WORKINPROGRESS_STATUS_ALLCONTENT);
+                                targetNode.setProperty(Constants.WORKINPROGRESS_LANGUAGES, (Value[]) null);
+                                if (debugEnabled) {
+                                    logger.debug("Setting WIP languages on node {} to {}", targetNode.getPath(),
+                                            wipLangugagesToSet);
+                                }
+                                break;
+                            case WORKINPROGRESS_STATUS_LANG:
+                                targetNode.setProperty(WORKINPROGRESS_STATUS, WORKINPROGRESS_STATUS_LANG);
+                                targetNode.setProperty(Constants.WORKINPROGRESS_LANGUAGES,
+                                        JCRContentUtils.createValues(wipLangugagesToSet, systemSession.getValueFactory()));
+                                if (debugEnabled) {
+                                    logger.debug("Setting WIP languages on node {} to {}", targetNode.getPath(),
+                                            wipLangugagesToSet);
+                                }
                         }
-
-                        if (effectiveWipStatusToSet != null && (Constants.WORKINPROGRESS_STATUS_DISABLED.equals(effectiveWipStatusToSet)
-                                || wipLangugagesToSet != null && wipLangugagesToSet.isEmpty())) {
-                            targetNode.setProperty(Constants.WORKINPROGRESS_LANGUAGES, (Value[]) null);
-                            targetNode.setProperty(Constants.WORKINPROGRESS_STATUS, (Value) null);
-                            if (debugEnabled) {
-                                logger.debug("Removing WIP status property on node {}", targetNode.getPath());
-                            }
-                        } else if (wipLangugagesToSet != null) {
-                            targetNode.setProperty(Constants.WORKINPROGRESS_LANGUAGES,
-                                    JCRContentUtils.createValues(wipLangugagesToSet, systemSession.getValueFactory()));
-                            if (debugEnabled) {
-                                logger.debug("Setting WIP languages on node {} to {}", targetNode.getPath(),
-                                        wipLangugagesToSet);
-                            }
-                        }
-                        targetNode.getSession().save();
+                        if (needSave)
+                            targetNode.getSession().save();
                         return null;
                     }
                 });
-    }
-
-    private void saveWipPropertiesIfNeeded(JCRNodeWrapper node,String newWipStatus)
-            throws RepositoryException {
-
-        final Locale locale = node.getSession().getLocale();
-        Set<String> newWipLanguages = new HashSet<String>();
-        JCRSessionWrapper session = node.getSession();
-
-
-
-        if ((Constants.WORKINPROGRESS_STATUS_ALLCONTENT.equals(newWipStatus)
-                || Constants.WORKINPROGRESS_STATUS_DISABLED.equals(newWipStatus))
-                && !node.hasPermission(AccessManagerUtils.getPrivilegeName(Privilege.JCR_MODIFY_PROPERTIES,
-                session.getWorkspace().getName()))) {
-            // we do not allow translators to change WIP status type to all content or disabled
-            newWipStatus = null;
-        }
-        if(!languages.isEmpty()){
-            newWipLanguages = languages;
-            if(languages.contains(locale.toString())){
-                newWipLanguages.remove(locale.toString());
-            }else{
-                newWipLanguages.add(locale.toString());
-            }
-        }else{
-            newWipLanguages.add(locale.toString());
-        }
-
-
-        if (!newWipLanguages.isEmpty()) {
-            // we do have changes
-            if (!node.hasPermission(AccessManagerUtils.getPrivilegeName(Privilege.JCR_MODIFY_PROPERTIES,
-                    session.getWorkspace().getName()))) {
-                for (String modifiedLang : newWipLanguages) {
-                    if (!node.hasPermission(AccessManagerUtils.getPrivilegeName(Privilege.JCR_MODIFY_PROPERTIES,
-                            session.getWorkspace().getName()) + "_" + modifiedLang)) {
-                        throw new AccessDeniedException("Unable to update Work In Progress information on node "
-                                + node.getPath() + " for user " + session.getUser().getName() + " in locale "
-                                + modifiedLang);
-                    }
-                }
-            }
-        } else if( languages.size() >= 0){
-           newWipStatus = Constants.WORKINPROGRESS_STATUS_DISABLED;
-           newWipLanguages = new HashSet<String>();
-        } else {
-            // no changes so far
-            newWipLanguages = null;
-        }
-
-        updateWipStatus(node, newWipStatus, newWipLanguages);
-
     }
 }
