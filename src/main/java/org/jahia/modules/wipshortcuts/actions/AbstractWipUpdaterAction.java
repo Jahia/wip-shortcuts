@@ -119,6 +119,7 @@ public abstract class AbstractWipUpdaterAction extends Action {
                     break;
                 case WORKINPROGRESS_STATUS_LANG:
                     final Set<String> languages;
+                    boolean updated = true;
                     if (!node.hasProperty(WORKINPROGRESS_LANGUAGES)) {
                         languages = Collections.singleton(currentLocale);
                     } else {
@@ -128,9 +129,10 @@ public abstract class AbstractWipUpdaterAction extends Action {
                             final String lang = val.getString();
                             languages.add(lang);
                         }
-                        languages.add(currentLocale);
+                        updated = languages.add(currentLocale);
                     }
-                    writeWipStatus(node, languages);
+                    if (updated)
+                        writeWipStatus(node, languages);
             }
         } else {
             if (!node.hasProperty(WORKINPROGRESS_STATUS)) return;
