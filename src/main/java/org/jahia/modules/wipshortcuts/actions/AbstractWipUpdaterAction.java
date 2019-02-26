@@ -123,12 +123,7 @@ public abstract class AbstractWipUpdaterAction extends Action {
                     if (!node.hasProperty(WORKINPROGRESS_LANGUAGES)) {
                         languages = Collections.singleton(currentLocale);
                     } else {
-                        languages = new HashSet<>();
-                        final JCRValueWrapper[] values = node.getProperty(WORKINPROGRESS_LANGUAGES).getValues();
-                        for (Value val : values) {
-                            final String lang = val.getString();
-                            languages.add(lang);
-                        }
+                        languages = getFlaggedLangs(node);
                         updated = languages.add(currentLocale);
                     }
                     if (updated)
@@ -136,7 +131,7 @@ public abstract class AbstractWipUpdaterAction extends Action {
             }
         } else {
             if (!node.hasProperty(WORKINPROGRESS_STATUS)) return;
-            final Set<String> languages;
+            Set<String> languages = null;
             switch (node.getPropertyAsString(WORKINPROGRESS_STATUS)) {
                 case WORKINPROGRESS_STATUS_DISABLED:
                     break;
@@ -146,19 +141,25 @@ public abstract class AbstractWipUpdaterAction extends Action {
                     writeWipStatus(node, languages);
                     break;
                 case WORKINPROGRESS_STATUS_LANG:
-                    if (!node.hasProperty(WORKINPROGRESS_LANGUAGES)) break;
-                    languages = new HashSet<>();
-                    final JCRValueWrapper[] values = node.getProperty(WORKINPROGRESS_LANGUAGES).getValues();
-                    for (Value val : values) {
-                        final String lang = val.getString();
-                        if (!StringUtils.equals(currentLocale, lang)) {
-                            languages.add(lang);
-                        }
+                    boolean updated = true;
+                    if (node.hasProperty(WORKINPROGRESS_LANGUAGES)) {
+                        languages = getFlaggedLangs(node);
+                        updated = languages.remove(currentLocale);
                     }
-                    if (languages.size() < values.length)
+                    if (updated)
                         writeWipStatus(node, languages);
             }
         }
+    }
+
+    private Set<String> getFlaggedLangs(JCRNodeWrapper node) throws RepositoryException {
+        final Set<String> languages = new HashSet<>();
+        final JCRValueWrapper[] values = node.getProperty(WORKINPROGRESS_LANGUAGES).getValues();
+        for (Value val : values) {
+            final String lang = val.getString();
+            languages.add(lang);
+        }
+        return languages;
     }
 
     private void writeWipStatus(JCRNodeWrapper node, final Set<String> wipLangugagesToSet) throws RepositoryException {
