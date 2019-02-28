@@ -62,8 +62,8 @@
     <description>This is the custom module (WIP Shortcuts) for running on a Digital Experience Manager server.</description>
 
     <scm>
-        <connection>scm:dummy:uri</connection>
-        <developerConnection>scm:dummy:uri</developerConnection>
+        <connection>scm:git:git@github.com:Jahia/wip-shortcuts</connection>
+        <developerConnection>scm:git:git@github.com:Jahia/wip-shortcuts</developerConnection>
     </scm>
 
     <properties>
