@@ -13,7 +13,7 @@
         <property name="requiredWorkspace" value="default" />
     </bean>
 
-    <!-- Content manager -->
+    <!-- Context menu -->
     <bean id="Toolbar.Item.ToggleWipMenu.editmode.ctxMenu" class="org.jahia.services.uicomponents.bean.toolbar.Item">
         <property name="actionItem">
             <bean class="org.jahia.ajax.gwt.client.widget.toolbar.action.ExecuteActionItem">
