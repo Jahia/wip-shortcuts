@@ -2,7 +2,6 @@ package org.jahia.modules.wipshortcuts.actions;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
-import org.jahia.api.Constants;
 import org.jahia.bin.Action;
 import org.jahia.bin.ActionResult;
 import org.jahia.services.content.JCRCallback;
@@ -206,8 +205,8 @@ public abstract class AbstractWipUpdaterAction extends Action {
                         switch (wipStatus) {
                             case WORKINPROGRESS_STATUS_DISABLED:
                                 if (targetNode.hasProperty(WORKINPROGRESS_STATUS) && !WORKINPROGRESS_STATUS_DISABLED.equals(targetNode.getProperty(WORKINPROGRESS_STATUS).getString())) {
-                                    targetNode.setProperty(Constants.WORKINPROGRESS_LANGUAGES, (Value[]) null);
-                                    targetNode.setProperty(Constants.WORKINPROGRESS_STATUS, (Value) null);
+                                    targetNode.setProperty(WORKINPROGRESS_LANGUAGES, (Value[]) null);
+                                    targetNode.setProperty(WORKINPROGRESS_STATUS, (Value) null);
                                 } else {
                                     needSave = false;
                                 }
@@ -217,7 +216,7 @@ public abstract class AbstractWipUpdaterAction extends Action {
                                 break;
                             case WORKINPROGRESS_STATUS_ALLCONTENT:
                                 targetNode.setProperty(WORKINPROGRESS_STATUS, WORKINPROGRESS_STATUS_ALLCONTENT);
-                                targetNode.setProperty(Constants.WORKINPROGRESS_LANGUAGES, (Value[]) null);
+                                targetNode.setProperty(WORKINPROGRESS_LANGUAGES, (Value[]) null);
                                 if (debugEnabled) {
                                     logger.debug("Setting WIP languages on node {} to {}", targetNode.getPath(),
                                             wipLanguagesToSet);
@@ -225,7 +224,7 @@ public abstract class AbstractWipUpdaterAction extends Action {
                                 break;
                             case WORKINPROGRESS_STATUS_LANG:
                                 targetNode.setProperty(WORKINPROGRESS_STATUS, WORKINPROGRESS_STATUS_LANG);
-                                targetNode.setProperty(Constants.WORKINPROGRESS_LANGUAGES,
+                                targetNode.setProperty(WORKINPROGRESS_LANGUAGES,
                                         JCRContentUtils.createValues(wipLanguagesToSet, systemSession.getValueFactory()));
                                 if (debugEnabled) {
                                     logger.debug("Setting WIP languages on node {} to {}", targetNode.getPath(),
