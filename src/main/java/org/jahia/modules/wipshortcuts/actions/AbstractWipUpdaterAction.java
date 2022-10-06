@@ -137,7 +137,7 @@ public abstract class AbstractWipUpdaterAction extends Action {
                 case WORKINPROGRESS_STATUS_DISABLED:
                     break;
                 case WORKINPROGRESS_STATUS_ALLCONTENT:
-                    languages = node.getResolveSite().getLanguages();
+                    languages = getSiteLanguages(node);
                     languages.remove(currentLocale);
                     writeWipStatus(node, languages);
                     break;
@@ -168,11 +168,9 @@ public abstract class AbstractWipUpdaterAction extends Action {
     }
 
     private void writeWipStatus(JCRNodeWrapper node, final Set<String> wipLanguagesToSet) throws RepositoryException {
-        final String wipStatus =
-                CollectionUtils.isEmpty(wipLanguagesToSet) ?
-                        WORKINPROGRESS_STATUS_DISABLED : WORKINPROGRESS_STATUS_LANG;
+        final boolean disableWip = CollectionUtils.isEmpty(wipLanguagesToSet);
 
-        if (WORKINPROGRESS_STATUS_DISABLED.equals(wipStatus) &&
+        if (disableWip &&
                 (!node.hasProperty(WORKINPROGRESS_STATUS) || WORKINPROGRESS_STATUS_DISABLED.equals(node.getPropertyAsString(WORKINPROGRESS_STATUS))))
             return;
 
@@ -184,6 +182,27 @@ public abstract class AbstractWipUpdaterAction extends Action {
                         final Node targetNode = systemSession.getProviderSession(node.getProvider()).getNodeByIdentifier(node.getIdentifier());
                         final boolean debugEnabled = logger.isDebugEnabled();
                         boolean needSave = true;
+                        final String wipStatus;
+                        if (disableWip) {
+                            wipStatus = WORKINPROGRESS_STATUS_DISABLED;
+                        } else {
+                            final Set<String> siteLanguages = getSiteLanguages(node);
+                            if (wipLanguagesToSet.containsAll(siteLanguages)) {
+                                wipStatus = WORKINPROGRESS_STATUS_ALLCONTENT;
+                            } else if (targetNode.hasProperty(WORKINPROGRESS_LANGUAGES)) {
+                                final Set<String> updatedLanguagesList = new HashSet<>(wipLanguagesToSet);
+                                for (Value value : targetNode.getProperty(WORKINPROGRESS_LANGUAGES).getValues()) {
+                                    updatedLanguagesList.add(value.getString());
+                                }
+                                if (updatedLanguagesList.containsAll(siteLanguages)) {
+                                    wipStatus = WORKINPROGRESS_STATUS_ALLCONTENT;
+                                } else {
+                                    wipStatus = WORKINPROGRESS_STATUS_LANG;
+                                }
+                            } else {
+                                wipStatus = WORKINPROGRESS_STATUS_LANG;
+                            }
+                        }
                         switch (wipStatus) {
                             case WORKINPROGRESS_STATUS_DISABLED:
                                 if (targetNode.hasProperty(WORKINPROGRESS_STATUS) && !WORKINPROGRESS_STATUS_DISABLED.equals(targetNode.getProperty(WORKINPROGRESS_STATUS).getString())) {
@@ -222,5 +241,9 @@ public abstract class AbstractWipUpdaterAction extends Action {
 
     private String getSessionLocale(JCRNodeWrapper node) throws RepositoryException {
         return LanguageCodeConverters.localeToLanguageTag(node.getSession().getLocale());
+    }
+
+    private Set<String> getSiteLanguages(JCRNodeWrapper node) throws RepositoryException {
+        return node.getResolveSite().getLanguages();
     }
 }
