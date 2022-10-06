@@ -26,7 +26,8 @@
         <property name="positionAfter" value="Toolbar.Item.EditContent"/>
     </bean>
 
-    <!-- Content manager -->
+    <!-- Content manager (dropped in V8) -->
+    <!--
     <bean id="Toolbar.Item.ToggleWipMenu.contentMgr" class="org.jahia.services.uicomponents.bean.toolbar.Item">
         <property name="actionItem">
             <bean class="org.jahia.ajax.gwt.client.widget.toolbar.action.ExecuteActionItem">
@@ -38,8 +39,10 @@
         <property name="parent" value="editorialcontentmanager.contextMenu"/>
         <property name="positionAfter" value="Toolbar.Item.EditContent"/>
     </bean>
+    -->
 
-    <!-- Content tab in left panel -->
+    <!-- Content tab in left panel (dropped in V8) -->
+    <!--
     <bean id="Toolbar.Item.ToggleWipMenu.editmode.contentTab" class="org.jahia.services.uicomponents.bean.toolbar.Item">
         <property name="actionItem">
             <bean class="org.jahia.ajax.gwt.client.widget.toolbar.action.ExecuteActionItem">
@@ -51,6 +54,7 @@
         <property name="parent" value="editmode.tabs[2].tableContextMenu"/>
         <property name="positionAfter" value="Toolbar.Item.EditContent"/>
     </bean>
+    -->
 
     <!-- Pages tab in left panel , right click on a page -->
     <bean id="Toolbar.Item.ToggleWipMenu.editmode.pagesTab" class="org.jahia.services.uicomponents.bean.toolbar.Item">
