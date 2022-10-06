@@ -243,6 +243,6 @@ public abstract class AbstractWipUpdaterAction extends Action {
     }
 
     private Set<String> getSiteLanguages(JCRNodeWrapper node) throws RepositoryException {
-        return node.getResolveSite().getLanguages();
+        return new HashSet<>(node.getResolveSite().getLanguages());
     }
 }
