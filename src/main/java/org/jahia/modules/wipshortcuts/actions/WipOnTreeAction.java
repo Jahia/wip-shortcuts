@@ -12,8 +12,13 @@ public class WipOnTreeAction extends AbstractWipUpdaterAction {
     private static final Logger logger = LoggerFactory.getLogger(WipOnTreeAction.class);
 
     @Override
-    protected boolean isValidRootNode(JCRNodeWrapper node) throws RepositoryException {
-        return node.isNodeType(Constants.JAHIANT_CONTENT);
+    protected boolean isValidRootNode(JCRNodeWrapper node) {
+        try {
+            return node.isNodeType(Constants.JAHIANT_CONTENT);
+        } catch (RepositoryException e) {
+            logger.error("", e);
+            return false;
+        }
     }
 
     @Override

@@ -12,14 +12,19 @@ public class WipOnPageAction extends AbstractWipUpdaterAction {
     private static final Logger logger = LoggerFactory.getLogger(WipOnPageAction.class);
 
     @Override
-    protected boolean isValidRootNode(JCRNodeWrapper node) throws RepositoryException {
-        return node.isNodeType(Constants.JAHIANT_PAGE);
+    protected boolean isValidRootNode(JCRNodeWrapper node) {
+        try {
+            return node.isNodeType(Constants.JAHIANT_PAGE);
+        } catch (RepositoryException e) {
+            logger.error("", e);
+            return false;
+        }
     }
 
     @Override
     protected boolean canIterate(JCRNodeWrapper child) {
         try {
-            return !child.isNodeType(Constants.JAHIANT_PAGE) && child.isNodeType(Constants.JAHIANT_CONTENT);
+            return !isValidRootNode(child) && child.isNodeType(Constants.JAHIANT_CONTENT);
         } catch (RepositoryException e) {
             logger.error("", e);
             return false;

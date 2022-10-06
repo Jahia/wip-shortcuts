@@ -1,5 +1,6 @@
 package org.jahia.modules.wipshortcuts.actions;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.jahia.api.Constants;
 import org.jahia.bin.Action;
@@ -58,7 +59,7 @@ public abstract class AbstractWipUpdaterAction extends Action {
         ACTION_RESULT = new ActionResult(HttpServletResponse.SC_OK, null, obj);
     }
 
-    protected abstract boolean isValidRootNode(JCRNodeWrapper node) throws RepositoryException;
+    protected abstract boolean isValidRootNode(JCRNodeWrapper node);
 
     protected abstract boolean canIterate(JCRNodeWrapper child);
 
@@ -81,7 +82,7 @@ public abstract class AbstractWipUpdaterAction extends Action {
             case WORKINPROGRESS_STATUS_LANG:
                 if (!node.hasProperty(WORKINPROGRESS_LANGUAGES)) return false;
 
-                final String currentLocale = LanguageCodeConverters.localeToLanguageTag(node.getSession().getLocale());
+                final String currentLocale = getSessionLocale(node);
                 for (Value lang : node.getProperty(WORKINPROGRESS_LANGUAGES).getValues()) {
                     if (StringUtils.equals(currentLocale, lang.getString())) return true;
                 }
@@ -98,7 +99,7 @@ public abstract class AbstractWipUpdaterAction extends Action {
     }
 
     private void updateWipStatus(JCRNodeWrapper node, boolean status) throws RepositoryException {
-        final String currentLocale = LanguageCodeConverters.localeToLanguageTag(node.getSession().getLocale());
+        final String currentLocale = getSessionLocale(node);
         final JCRSessionWrapper session = node.getSession();
         if (!node.hasPermission(AccessManagerUtils.getPrivilegeName(Privilege.JCR_MODIFY_PROPERTIES, session.getWorkspace().getName())) &&
                 !node.hasPermission(String.format("%s_%s", AccessManagerUtils.getPrivilegeName(Privilege.JCR_MODIFY_PROPERTIES, session.getWorkspace().getName()), currentLocale))) {
@@ -108,12 +109,12 @@ public abstract class AbstractWipUpdaterAction extends Action {
 
         if (status) {
             if (!node.hasProperty(WORKINPROGRESS_STATUS)) {
-                writeWipStatus(node, Collections.singleton(currentLocale));
+                writeWipStatus(node, currentLocale);
                 return;
             }
             switch (node.getPropertyAsString(WORKINPROGRESS_STATUS)) {
                 case WORKINPROGRESS_STATUS_DISABLED:
-                    writeWipStatus(node, Collections.singleton(currentLocale));
+                    writeWipStatus(node, currentLocale);
                     break;
                 case WORKINPROGRESS_STATUS_ALLCONTENT:
                     break;
@@ -162,9 +163,13 @@ public abstract class AbstractWipUpdaterAction extends Action {
         return languages;
     }
 
-    private void writeWipStatus(JCRNodeWrapper node, final Set<String> wipLangugagesToSet) throws RepositoryException {
+    private void writeWipStatus(JCRNodeWrapper node, final String localeToSet) throws RepositoryException {
+        writeWipStatus(node, Collections.singleton(localeToSet));
+    }
+
+    private void writeWipStatus(JCRNodeWrapper node, final Set<String> wipLanguagesToSet) throws RepositoryException {
         final String wipStatus =
-                wipLangugagesToSet == null || wipLangugagesToSet.isEmpty() ?
+                CollectionUtils.isEmpty(wipLanguagesToSet) ?
                         WORKINPROGRESS_STATUS_DISABLED : WORKINPROGRESS_STATUS_LANG;
 
         if (WORKINPROGRESS_STATUS_DISABLED.equals(wipStatus) &&
@@ -196,16 +201,16 @@ public abstract class AbstractWipUpdaterAction extends Action {
                                 targetNode.setProperty(Constants.WORKINPROGRESS_LANGUAGES, (Value[]) null);
                                 if (debugEnabled) {
                                     logger.debug("Setting WIP languages on node {} to {}", targetNode.getPath(),
-                                            wipLangugagesToSet);
+                                            wipLanguagesToSet);
                                 }
                                 break;
                             case WORKINPROGRESS_STATUS_LANG:
                                 targetNode.setProperty(WORKINPROGRESS_STATUS, WORKINPROGRESS_STATUS_LANG);
                                 targetNode.setProperty(Constants.WORKINPROGRESS_LANGUAGES,
-                                        JCRContentUtils.createValues(wipLangugagesToSet, systemSession.getValueFactory()));
+                                        JCRContentUtils.createValues(wipLanguagesToSet, systemSession.getValueFactory()));
                                 if (debugEnabled) {
                                     logger.debug("Setting WIP languages on node {} to {}", targetNode.getPath(),
-                                            wipLangugagesToSet);
+                                            wipLanguagesToSet);
                                 }
                         }
                         if (needSave)
@@ -213,5 +218,9 @@ public abstract class AbstractWipUpdaterAction extends Action {
                         return null;
                     }
                 });
+    }
+
+    private String getSessionLocale(JCRNodeWrapper node) throws RepositoryException {
+        return LanguageCodeConverters.localeToLanguageTag(node.getSession().getLocale());
     }
 }
