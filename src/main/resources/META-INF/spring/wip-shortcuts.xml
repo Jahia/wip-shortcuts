@@ -56,7 +56,7 @@
     </bean>
     -->
 
-    <!-- Pages tab in left panel , right click on a page -->
+    <!-- Pages tree in the page composer, right click on a page -->
     <bean id="Toolbar.Item.ToggleWipMenu.editmode.pagesTab" class="org.jahia.services.uicomponents.bean.toolbar.Item">
         <property name="actionItem">
             <bean class="org.jahia.ajax.gwt.client.widget.toolbar.action.ExecuteActionItem">
@@ -66,6 +66,6 @@
         <property name="titleKey" value="label.toggleWip@resources.wip-shortcuts"/>
         <property name="icon" value="suspend"/>
         <property name="parent" value="editmode.tabs[0].treeContextMenu"/>
-        <property name="positionAfter" value="Toolbar.Item.EditContent"/>
+        <property name="positionAfter" value="Toolbar.Item.EditContentRootNodeEditablePage"/>
     </bean>
 </beans>
