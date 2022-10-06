@@ -49,12 +49,11 @@
     <parent>
         <artifactId>jahia-modules</artifactId>
         <groupId>org.jahia.modules</groupId>
-        <version>7.2.3.1</version>
+        <version>8.0.0.0</version>
     </parent>
-    <groupId>org.jahia.modules</groupId>
     <artifactId>wip-shortcuts</artifactId>
     <name>WIP Shortcuts</name>
-    <version>1.2-SNAPSHOT</version>
+    <version>2.0-SNAPSHOT</version>
     <packaging>bundle</packaging>
     <description>This is the custom module (WIP Shortcuts) for running on a Digital Experience Manager server.</description>
 
@@ -66,6 +65,8 @@
 
     <properties>
         <jahia-depends>default</jahia-depends>
+        <require-capability>osgi.extender;filter:="(osgi.extender=org.jahia.bundles.blueprint.extender.config)"</require-capability>
+        <jahia-module-signature>MCwCFHJci5+1l5m9gfcX/RX1jDY179RqAhR3Twj58+dOy3qwgZbJ1Sl5dRP4rQ==</jahia-module-signature>
     </properties>
 
     <repositories>
@@ -82,4 +83,15 @@
             </snapshots>
         </repository>
     </repositories>
+
+    <distributionManagement>
+        <repository>
+            <id>ps-releases</id>
+            <url>https://devtools.jahia.com/nexus/content/repositories/jahia-professional-services-public-repository</url>
+        </repository>
+        <snapshotRepository>
+            <id>ps-snapshots</id>
+            <url>https://devtools.jahia.com/nexus/content/repositories/jahia-professional-services-private-repository</url>
+        </snapshotRepository>
+    </distributionManagement>
 </project>
